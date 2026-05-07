@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Search, Timer, TimerOff } from "lucide-react";
 import { subjects } from "@/lib/quiz-data";
 import type { Difficulty } from "@/lib/quiz-data";
+import { useAuth } from "@/lib/auth-context";
+import { getHistory } from "@/lib/safe-storage";
 import PageShell from "@/components/PageShell";
 
 const subjectIcons: Record<string, string> = {
@@ -15,9 +17,14 @@ const subjectIcons: Record<string, string> = {
 
 const QuizSelect = () => {
   const navigate = useNavigate();
+  const { user, ready } = useAuth();
   const [difficulty, setDifficulty] = useState<Difficulty>("easy");
   const [search, setSearch] = useState("");
   const [timedMode, setTimedMode] = useState(false);
+
+  useEffect(() => {
+    if (ready && !user) navigate("/login", { replace: true });
+  }, [ready, user, navigate]);
 
   const difficulties: { key: Difficulty; label: string }[] = [
     { key: "easy", label: "Easy" },
@@ -29,7 +36,7 @@ const QuizSelect = () => {
     s.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  const history = JSON.parse(localStorage.getItem("mdcat_history") || "[]");
+  const history = getHistory().filter((h) => h.username === user?.username);
 
   const buildUrl = (subjectId: string) => {
     const params = new URLSearchParams();
