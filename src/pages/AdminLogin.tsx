@@ -1,68 +1,117 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Shield, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
+import { safeGet, safeSet } from "@/lib/safe-storage";
 import adminLogo from "@/assets/logo.jpeg";
+
+const LOCK_KEY = "mdcat_admin_lock";
+interface LockState { attempts: number; lockedUntil: number; }
 
 const AdminLogin = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [attempts, setAttempts] = useState(0);
-  const [locked, setLocked] = useState(false);
-  const { login, user } = useAuth();
+  const [lockState, setLockState] = useState<LockState>(() =>
+    safeGet<LockState>(LOCK_KEY, { attempts: 0, lockedUntil: 0 })
+  );
+  const { login, user, ready } = useAuth();
   const navigate = useNavigate();
 
-  // If already logged in as admin, redirect
-  if (user?.isAdmin) {
-    navigate("/admin", { replace: true });
-    return null;
-  }
+  // Redirect already-logged-in admins (in effect, never during render)
+  useEffect(() => {
+    if (ready && user?.isAdmin) navigate("/admin", { replace: true });
+  }, [ready, user, navigate]);
+
+  const now = Date.now();
+  const locked = lockState.lockedUntil > now;
+  const remainingMs = locked ? lockState.lockedUntil - now : 0;
+
+  // Auto-unlock when timer elapses
+  useEffect(() => {
+    if (!locked) return;
+    const t = setTimeout(() => {
+      const cleared = { attempts: 0, lockedUntil: 0 };
+      setLockState(cleared);
+      safeSet(LOCK_KEY, cleared);
+    }, remainingMs + 50);
+    return () => clearTimeout(t);
+  }, [locked, remainingMs]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
     if (locked) {
-      toast.error("Too many attempts. Please wait 30 seconds.");
+      toast.error(`Too many attempts. Try again in ${Math.ceil(remainingMs / 1000)}s.`);
       return;
     }
-
     if (!username.trim() || !password.trim()) {
       toast.error("Please fill in all fields");
       return;
     }
 
-    const success = login(username, password);
-
-    if (success) {
-      // Check if the logged-in user is actually an admin
-      const savedUser = JSON.parse(localStorage.getItem("mdcat_user") || "{}");
-      if (savedUser.isAdmin) {
-        toast.success("Welcome, Admin!");
-        navigate("/admin", { replace: true });
-      } else {
-        toast.error("Access denied. Admin credentials required.");
-        // Log them out since they're not admin
-        localStorage.removeItem("mdcat_user");
-        window.location.reload();
-      }
+    const res = login(username, password);
+    if (res.ok && res.isAdmin) {
+      const cleared = { attempts: 0, lockedUntil: 0 };
+      setLockState(cleared);
+      safeSet(LOCK_KEY, cleared);
+      toast.success("Welcome, Admin!");
+      navigate("/admin", { replace: true });
+    } else if (res.ok && !res.isAdmin) {
+      toast.error("Access denied. Admin credentials required.");
     } else {
-      const newAttempts = attempts + 1;
-      setAttempts(newAttempts);
-      if (newAttempts >= 5) {
-        setLocked(true);
-        toast.error("Account locked for 30 seconds due to too many failed attempts.");
-        setTimeout(() => {
-          setLocked(false);
-          setAttempts(0);
-        }, 30000);
+      const newAttempts = lockState.attempts + 1;
+      const next: LockState =
+        newAttempts >= 5
+          ? { attempts: 0, lockedUntil: Date.now() + 30_000 }
+          : { attempts: newAttempts, lockedUntil: 0 };
+      setLockState(next);
+      safeSet(LOCK_KEY, next);
+      if (next.lockedUntil) {
+        toast.error("Locked for 30 seconds due to too many failed attempts.");
       } else {
         toast.error(`Invalid credentials (${5 - newAttempts} attempts remaining)`);
       }
     }
   };
+
+  return (
+    <div className="min-h-dvh flex flex-col bg-background">
+      <div className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary to-primary/80" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary-foreground)/0.08),transparent_50%)]" />
+
+        <div className="relative px-5 pt-12 pb-10 flex flex-col items-center" style={{ paddingTop: "max(3rem, env(safe-area-inset-top))" }}>
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="absolute top-6 left-5 text-primary-foreground/80 hover:text-primary-foreground"
+          >
+            <ArrowLeft size={22} />
+          </button>
+
+          <motion.div
+            className="h-20 rounded-2xl bg-primary-foreground/15 backdrop-blur-sm flex items-center justify-center px-3 py-2 mb-4"
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 400, damping: 20 }}
+          >
+            <img src={adminLogo} alt="MDCAT Smart Prep" className="h-full w-auto max-w-[160px] object-contain" />
+          </motion.div>
+
+          <motion.div
+            className="text-center"
+            initial={{ y: 10, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.05 }}
+          >
+            <h1 className="text-2xl font-extrabold text-primary-foreground">Admin Access</h1>
+            <p className="text-primary-foreground/60 text-sm mt-1">Restricted area — authorized personnel only</p>
+          </motion.div>
+        </div>
+      </div>
+
 
   return (
     <div className="min-h-dvh flex flex-col bg-background">
