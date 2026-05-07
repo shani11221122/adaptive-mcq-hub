@@ -1,14 +1,10 @@
 {
-  "appId": "app.lovable.b0831e5e786948d8abfc175efaf53aa7",
-  "appName": "MDcat",
+  "appId": "app.lovable.beb3f47e19ed4a27a6cb5097eea3d422",
+  "appName": "MDCAT Smart Prep",
   "webDir": "dist",
-  "server": {
-    "url": "https://b0831e5e-7869-48d8-abfc-175efaf53aa7.lovableproject.com?forceHideBadge=true",
-    "cleartext": true
-  },
   "plugins": {
     "SplashScreen": {
-      "launchShowDuration": 2000,
+      "launchShowDuration": 1500,
       "backgroundColor": "#6366F1",
       "showSpinner": false,
       "androidSplashResourceName": "splash",
