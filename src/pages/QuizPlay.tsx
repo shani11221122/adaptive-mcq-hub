@@ -109,7 +109,7 @@ const QuizPlay = () => {
     const user = JSON.parse(localStorage.getItem("mdcat_user") || "{}");
     history.push({ ...result, username: user.username });
     localStorage.setItem("mdcat_history", JSON.stringify(history));
-    navigate("/result", { state: { result, answers: finalAnswers, questions } });
+    navigate("/result", { state: { result, answers: finalAnswers, questions }, replace: true });
   }, [finished, questions, subject, subjectId, difficulty, isTimed, navigate]);
 
   const handleTimeUp = useCallback(() => {
