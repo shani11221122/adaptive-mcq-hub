@@ -48,7 +48,10 @@ async function buildMockTest(): Promise<Question[]> {
 
 const MockTest = () => {
   const navigate = useNavigate();
-  const { user, unlockPremium } = useAuth();
+  const { user, ready, unlockPremium } = useAuth();
+  useEffect(() => {
+    if (ready && !user) navigate("/login", { replace: true });
+  }, [ready, user, navigate]);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [current, setCurrent] = useState(0);
