@@ -110,6 +110,8 @@ const AdminLogin = () => {
             <p className="text-primary-foreground/60 text-sm mt-1">Restricted area — authorized personnel only</p>
           </motion.div>
         </div>
+      </div>
+
       {/* Form */}
       <motion.div
         className="flex-1 -mt-4 bg-background rounded-t-[2rem] px-6 pt-8 pb-8"
