@@ -110,7 +110,9 @@ const Admin = () => {
 
   // ─── Dashboard Stats ───
 
-  const history = JSON.parse(localStorage.getItem("mdcat_history") || "[]");
+  const history = useMemo(() => {
+    try { return JSON.parse(localStorage.getItem("mdcat_history") || "[]"); } catch { return []; }
+  }, []);
   const recentQuestions = [...questions].sort((a, b) => b.createdAt - a.createdAt).slice(0, 5);
 
   const getSubjectStats = (subjectId: string) => {
