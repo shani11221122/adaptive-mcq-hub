@@ -101,7 +101,7 @@ const QuizPlay = () => {
       correct,
       incorrect: questions.length - correct,
       total: questions.length,
-      difficulty: difficulty || "all",
+      difficulty: difficulty as Difficulty,
       date: new Date().toISOString(),
       timed: isTimed,
     };
