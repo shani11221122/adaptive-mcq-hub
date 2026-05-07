@@ -35,7 +35,7 @@ type FormData = {
   difficulty: Difficulty;
 };
 
-type BatchEntry = FormData;
+// BatchEntry now imported from AdminBatchView (shape matches FormData)
 
 type View = "dashboard" | "subject" | "batch" | "users" | "monitoring";
 
@@ -85,17 +85,7 @@ const Admin = () => {
   const [batchEntries, setBatchEntries] = useState<BatchEntry[]>([]);
   const [currentBatchIdx, setCurrentBatchIdx] = useState(0);
 
-  // Premium code
-  const [premiumCode, setPremiumCodeState] = useState(getPremiumCode());
-  const [showPremiumEdit, setShowPremiumEdit] = useState(false);
-
-  // Credential change state
-  const [showCredChange, setShowCredChange] = useState(false);
-  const [credCurrentPass, setCredCurrentPass] = useState("");
-  const [credNewUsername, setCredNewUsername] = useState("");
-  const [credNewPassword, setCredNewPassword] = useState("");
-  const [credConfirmPassword, setCredConfirmPassword] = useState("");
-  const [credShowPasswords, setCredShowPasswords] = useState(false);
+  // Premium code & credentials are now managed inside dedicated panels.
 
   useEffect(() => {
     if (!user?.isAdmin) { navigate("/home"); return; }
