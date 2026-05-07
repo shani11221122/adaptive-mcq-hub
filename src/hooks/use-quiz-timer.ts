@@ -16,6 +16,11 @@ export function useQuizTimer({ totalSeconds, initialSeconds, onTimeUp, onTick, e
   onTickRef.current = onTick;
   const initializedRef = useRef(false);
 
+  // Reset initialization when timer disabled (e.g. mock-test paused / new test)
+  useEffect(() => {
+    if (!enabled) initializedRef.current = false;
+  }, [enabled]);
+
   useEffect(() => {
     if (!enabled) return;
     const start = initialSeconds ?? totalSeconds;
@@ -43,7 +48,7 @@ export function useQuizTimer({ totalSeconds, initialSeconds, onTimeUp, onTick, e
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [enabled, secondsLeft <= 0]);
+  }, [enabled, secondsLeft]);
 
   const minutes = Math.floor(secondsLeft / 60);
   const seconds = secondsLeft % 60;

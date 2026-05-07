@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, RotateCcw, Eye } from "lucide-react";
 import { motion } from "framer-motion";
@@ -17,10 +18,11 @@ const Result = () => {
   const { user } = useAuth();
   const { result, answers, questions } = location.state || {};
 
-  if (!result) {
-    navigate("/home");
-    return null;
-  }
+  useEffect(() => {
+    if (!result) navigate("/home", { replace: true });
+  }, [result, navigate]);
+
+  if (!result) return null;
 
   const percentage = Math.round((result.correct / result.total) * 100);
   const message = motivationalMessages.find((m) => percentage >= m.min)!;
