@@ -110,45 +110,6 @@ const AdminLogin = () => {
             <p className="text-primary-foreground/60 text-sm mt-1">Restricted area — authorized personnel only</p>
           </motion.div>
         </div>
-      </div>
-
-
-  return (
-    <div className="min-h-dvh flex flex-col bg-background">
-      {/* Header */}
-      <div className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary to-primary/80" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary-foreground)/0.08),transparent_50%)]" />
-
-        <div className="relative px-5 pt-12 pb-10 flex flex-col items-center">
-          <button
-            onClick={() => navigate(-1)}
-            className="absolute top-6 left-5 text-primary-foreground/80 hover:text-primary-foreground"
-          >
-            <ArrowLeft size={22} />
-          </button>
-
-          <motion.div
-            className="h-20 rounded-2xl bg-primary-foreground/15 backdrop-blur-sm flex items-center justify-center px-3 py-2 mb-4"
-            initial={{ scale: 0.5, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: "spring", stiffness: 400, damping: 20 }}
-          >
-            <img src={adminLogo} alt="MDCAT Smart Prep" className="h-full w-auto max-w-[160px] object-contain" />
-          </motion.div>
-
-          <motion.div
-            className="text-center"
-            initial={{ y: 10, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.05 }}
-          >
-            <h1 className="text-2xl font-extrabold text-primary-foreground">Admin Access</h1>
-            <p className="text-primary-foreground/60 text-sm mt-1">Restricted area — authorized personnel only</p>
-          </motion.div>
-        </div>
-      </div>
-
       {/* Form */}
       <motion.div
         className="flex-1 -mt-4 bg-background rounded-t-[2rem] px-6 pt-8 pb-8"
