@@ -1,34 +1,42 @@
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuth } from "@/lib/auth-context";
 import { BookOpen, ClipboardCheck, Trophy, Target, Flame, ChevronRight, Crown, Shield } from "lucide-react";
 import PageShell from "@/components/PageShell";
+import { getHistory } from "@/lib/safe-storage";
 import logo from "@/assets/logo.jpeg";
 
 const Home = () => {
-  const { user } = useAuth();
+  const { user, ready } = useAuth();
   const navigate = useNavigate();
 
-  const history = JSON.parse(localStorage.getItem("mdcat_history") || "[]")
-    .filter((h: any) => h.username === user?.username);
+  useEffect(() => {
+    if (ready && !user) navigate("/login", { replace: true });
+  }, [ready, user, navigate]);
+
+  const history = getHistory().filter((h) => h.username === user?.username);
 
   const totalQuizzes = history.length;
-  const totalCorrect = history.reduce((acc: number, h: any) => acc + h.correct, 0);
-  const totalQuestions = history.reduce((acc: number, h: any) => acc + h.total, 0);
+  const totalCorrect = history.reduce((acc: number, h) => acc + h.correct, 0);
+  const totalQuestions = history.reduce((acc: number, h) => acc + h.total, 0);
   const accuracy = totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
 
+  // Consecutive-day streak walking back from today.
   const streak = (() => {
     if (history.length === 0) return 0;
-    const dates = [...new Set(history.map((h: any) => new Date(h.date).toDateString() as string))].sort(
-      (a: string, b: string) => new Date(b).getTime() - new Date(a).getTime()
+    const dayStrings = new Set(
+      history.map((h) => new Date(h.date).toDateString())
     );
     let count = 0;
-    const today = new Date();
-    for (let i = 0; i < dates.length; i++) {
-      const d = new Date(dates[i] as string);
-      const diff = Math.floor((today.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
-      if (diff === i || (i === 0 && diff <= 1)) count++;
-      else break;
+    const cursor = new Date();
+    // If user didn't quiz today, start from yesterday
+    if (!dayStrings.has(cursor.toDateString())) {
+      cursor.setDate(cursor.getDate() - 1);
+    }
+    while (dayStrings.has(cursor.toDateString())) {
+      count++;
+      cursor.setDate(cursor.getDate() - 1);
     }
     return count;
   })();

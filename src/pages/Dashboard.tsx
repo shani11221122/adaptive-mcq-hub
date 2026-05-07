@@ -1,16 +1,22 @@
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { subjects } from "@/lib/quiz-data";
+import { getHistory } from "@/lib/safe-storage";
 import CircularProgress from "@/components/CircularProgress";
 import PageShell from "@/components/PageShell";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, LineChart, Line } from "recharts";
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const history = JSON.parse(localStorage.getItem("mdcat_history") || "[]")
-    .filter((h: any) => h.username === user?.username);
+  const { user, ready } = useAuth();
+
+  useEffect(() => {
+    if (ready && !user) navigate("/login", { replace: true });
+  }, [ready, user, navigate]);
+
+  const history = getHistory().filter((h) => h.username === user?.username);
 
   const totalCorrect = history.reduce((a: number, h: any) => a + h.correct, 0);
   const totalQ = history.reduce((a: number, h: any) => a + h.total, 0);
