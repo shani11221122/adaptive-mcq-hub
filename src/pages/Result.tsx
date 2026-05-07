@@ -85,7 +85,13 @@ const Result = () => {
         </button>
         <button
           className="w-full h-12 rounded-xl border-2 border-border text-foreground text-sm font-semibold flex items-center justify-center gap-2 hover:border-primary/30 transition-colors duration-100 active:scale-[0.98]"
-          onClick={() => navigate(`/quiz/${questions?.[0]?.subject || ""}`)}
+          onClick={() => {
+            const subj = questions?.[0]?.subject || "";
+            const diff = result?.difficulty && result.difficulty !== "all" ? result.difficulty : "easy";
+            const params = new URLSearchParams({ difficulty: diff });
+            if (result?.timed) params.set("timed", "true");
+            navigate(`/quiz/${subj}?${params.toString()}`);
+          }}
         >
           <RotateCcw size={18} /> Try Again
         </button>

@@ -39,7 +39,11 @@ const QuizPlay = () => {
   const { subjectId } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const difficulty = searchParams.get("difficulty") as Difficulty | null;
+  const rawDifficulty = searchParams.get("difficulty");
+  const VALID: Difficulty[] = ["easy", "intermediate", "hard"];
+  const difficulty: Difficulty | null = VALID.includes(rawDifficulty as Difficulty)
+    ? (rawDifficulty as Difficulty)
+    : null;
   const isTimed = searchParams.get("timed") === "true";
 
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -47,24 +51,28 @@ const QuizPlay = () => {
   const seenRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
+    // "All" difficulty is no longer supported — require a valid difficulty.
+    if (!difficulty) {
+      navigate("/quiz", { replace: true });
+      return;
+    }
     const key = subjectId || "";
-    getQuestionsBySubjectAsync(key, difficulty || undefined).then(all => {
-      const seen = getSeenIds(key, difficulty || undefined);
+    getQuestionsBySubjectAsync(key, difficulty).then(all => {
+      const seen = getSeenIds(key, difficulty);
       let unseen = all.filter(q => !seen.has(q.id));
       if (unseen.length === 0) {
         seen.clear();
-        saveSeenIds(key, seen, difficulty || undefined);
+        saveSeenIds(key, seen, difficulty);
         unseen = all;
       }
       const shuffled = shuffle(unseen);
-      // Limit to exactly QUESTIONS_PER_CATEGORY when a difficulty is selected
-      const limited = difficulty ? shuffled.slice(0, QUESTIONS_PER_CATEGORY) : shuffled;
+      const limited = shuffled.slice(0, QUESTIONS_PER_CATEGORY);
       seenRef.current = seen;
       setQuestions(limited);
       setAnswers(new Array(limited.length).fill(null));
       setLoading(false);
     });
-  }, [subjectId, difficulty]);
+  }, [subjectId, difficulty, navigate]);
 
   const subject = subjects.find((s) => s.id === subjectId);
   const [current, setCurrent] = useState(0);
@@ -86,14 +94,14 @@ const QuizPlay = () => {
     const key = subjectId || "";
     const seen = seenRef.current;
     questions.forEach(q => seen.add(q.id));
-    saveSeenIds(key, seen, difficulty || undefined);
+    saveSeenIds(key, seen, difficulty as Difficulty);
 
     const result = {
       subject: subject?.name || subjectId,
       correct,
       incorrect: questions.length - correct,
       total: questions.length,
-      difficulty: difficulty || "all",
+      difficulty: difficulty as Difficulty,
       date: new Date().toISOString(),
       timed: isTimed,
     };
@@ -169,7 +177,7 @@ const QuizPlay = () => {
                 {difficulty === "intermediate" ? "Medium" : difficulty}
               </span>
             )}
-            {!difficulty && <span className="text-[10px] text-muted-foreground">All levels</span>}
+            
             {isTimed && <span className="text-[10px] text-muted-foreground">• Timed</span>}
           </div>
         </div>

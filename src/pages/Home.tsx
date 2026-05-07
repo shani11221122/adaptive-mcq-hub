@@ -166,15 +166,15 @@ const Home = () => {
                     <p className="font-semibold text-sm text-foreground capitalize truncate">{h.subject}</p>
                     <p className="text-xs text-muted-foreground">{h.correct}/{h.total} correct</p>
                   </div>
-                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize ${
-                    h.difficulty === "easy"
-                      ? "bg-success/10 text-success"
-                      : h.difficulty === "intermediate"
-                      ? "bg-warning/10 text-warning"
-                      : h.difficulty === "hard"
-                      ? "bg-destructive/10 text-destructive"
-                      : "bg-muted text-muted-foreground"
-                  }`}>{h.difficulty === "intermediate" ? "Medium" : h.difficulty}</span>
+                  {["easy","intermediate","hard"].includes(h.difficulty) && (
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize ${
+                      h.difficulty === "easy"
+                        ? "bg-success/10 text-success"
+                        : h.difficulty === "intermediate"
+                        ? "bg-warning/10 text-warning"
+                        : "bg-destructive/10 text-destructive"
+                    }`}>{h.difficulty === "intermediate" ? "Medium" : h.difficulty}</span>
+                  )}
                 </div>
               );
             })
