@@ -177,7 +177,7 @@ const QuizPlay = () => {
                 {difficulty === "intermediate" ? "Medium" : difficulty}
               </span>
             )}
-            {!difficulty && <span className="text-[10px] text-muted-foreground">All levels</span>}
+            
             {isTimed && <span className="text-[10px] text-muted-foreground">• Timed</span>}
           </div>
         </div>
