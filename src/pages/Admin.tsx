@@ -2,14 +2,17 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Plus, Trash2, Pencil, Search, X, Check, ChevronDown,
-  Database, Download, Upload, KeyRound, BookOpen, BarChart3,
-  Shield, LogOut, ChevronRight, Layers, Clock, TrendingUp, Eye, EyeOff, UserCog, Users, Activity
+  Database, Download, Upload, BookOpen,
+  Shield, LogOut, ChevronRight, Layers, TrendingUp, Users, Activity
 } from "lucide-react";
 import AdminUsers from "@/components/AdminUsers";
 import AdminMonitoring from "@/components/AdminMonitoring";
+import AdminBatchView, { type BatchEntry } from "@/components/admin/AdminBatchView";
+import AdminAnalyticsCharts from "@/components/admin/AdminAnalyticsCharts";
+import AdminPremiumCodePanel from "@/components/admin/AdminPremiumCodePanel";
+import AdminCredentialsPanel from "@/components/admin/AdminCredentialsPanel";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/lib/auth-context";
-import { getPremiumCode, setPremiumCode } from "@/lib/auth-context";
 import { subjects, type Difficulty, sampleQuestions } from "@/lib/quiz-data";
 import {
   getAllQuestions, addQuestion, updateQuestion, deleteQuestion,
@@ -18,8 +21,9 @@ import {
 import { parseQuizJson, buildExportPayload, downloadJson } from "@/lib/quiz-schema";
 import { logActivity } from "@/lib/admin-activity";
 import AdminActivity from "@/components/AdminActivity";
+import { getHistory, safeGet } from "@/lib/safe-storage";
 import { toast } from "sonner";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid, PieChart, Pie, Cell } from "recharts";
+
 
 // ─── Types & Constants ───
 
@@ -31,7 +35,7 @@ type FormData = {
   difficulty: Difficulty;
 };
 
-type BatchEntry = FormData;
+// BatchEntry now imported from AdminBatchView (shape matches FormData)
 
 type View = "dashboard" | "subject" | "batch" | "users" | "monitoring";
 
@@ -81,17 +85,7 @@ const Admin = () => {
   const [batchEntries, setBatchEntries] = useState<BatchEntry[]>([]);
   const [currentBatchIdx, setCurrentBatchIdx] = useState(0);
 
-  // Premium code
-  const [premiumCode, setPremiumCodeState] = useState(getPremiumCode());
-  const [showPremiumEdit, setShowPremiumEdit] = useState(false);
-
-  // Credential change state
-  const [showCredChange, setShowCredChange] = useState(false);
-  const [credCurrentPass, setCredCurrentPass] = useState("");
-  const [credNewUsername, setCredNewUsername] = useState("");
-  const [credNewPassword, setCredNewPassword] = useState("");
-  const [credConfirmPassword, setCredConfirmPassword] = useState("");
-  const [credShowPasswords, setCredShowPasswords] = useState(false);
+  // Premium code & credentials are now managed inside dedicated panels.
 
   useEffect(() => {
     if (!user?.isAdmin) { navigate("/home"); return; }
@@ -110,9 +104,7 @@ const Admin = () => {
 
   // ─── Dashboard Stats ───
 
-  const history = useMemo(() => {
-    try { return JSON.parse(localStorage.getItem("mdcat_history") || "[]"); } catch { return []; }
-  }, []);
+  const history = useMemo(() => getHistory(), []);
   const recentQuestions = [...questions].sort((a, b) => b.createdAt - a.createdAt).slice(0, 5);
 
   const getSubjectStats = (subjectId: string) => {
@@ -125,9 +117,8 @@ const Admin = () => {
     };
   };
 
-  const totalUsers = (() => {
-    try { return JSON.parse(localStorage.getItem("mdcat_users") || "[]").length; } catch { return 0; }
-  })();
+  const totalUsers = safeGet<unknown[]>("mdcat_users", []).length;
+
 
   const totalStats = {
     total: questions.length,
@@ -139,7 +130,7 @@ const Admin = () => {
 
   // ─── Analytics Data ───
 
-  const CHART_COLORS = ["hsl(var(--primary))", "hsl(var(--destructive))", "hsl(var(--warning, 45 93% 47%))", "hsl(142 76% 36%)", "hsl(262 83% 58%)"];
+  // ─── Analytics Data ───
 
   const subjectAccuracyData = useMemo(() =>
     subjects.map(s => {
@@ -390,119 +381,17 @@ const Admin = () => {
   }
 
   if (view === "batch") {
-    const entry = batchEntries[currentBatchIdx];
-    const filledCount = batchEntries.filter(e => e.question.trim() && e.options.every(o => o.trim())).length;
-
     return (
-      <div className="h-dvh flex flex-col bg-background">
-        {/* Header */}
-        <div className="bg-primary px-4 pt-8 pb-4 shrink-0" style={{ paddingTop: "max(2rem, env(safe-area-inset-top))" }}>
-          <div className="flex items-center gap-3">
-            <button onClick={() => setView("subject")} className="text-primary-foreground">
-              <ArrowLeft size={22} />
-            </button>
-            <div className="flex-1 min-w-0">
-              <h1 className="text-lg font-extrabold text-primary-foreground">Batch Insert</h1>
-              <p className="text-primary-foreground/60 text-xs">
-                {subjects.find(s => s.id === batchSubject)?.name} · {batchDifficulty} · {filledCount}/10 filled
-              </p>
-            </div>
-            <button
-              onClick={handleBatchSubmit}
-              disabled={filledCount === 0}
-              className="bg-primary-foreground/20 text-primary-foreground px-4 py-2 rounded-xl text-xs font-bold disabled:opacity-40"
-            >
-              Save All ({filledCount})
-            </button>
-          </div>
-        </div>
-
-        {/* Question navigator */}
-        <div className="shrink-0 px-4 py-3 flex gap-1.5 overflow-x-auto scrollbar-none border-b border-border">
-          {batchEntries.map((e, i) => {
-            const filled = e.question.trim() && e.options.every(o => o.trim());
-            return (
-              <button
-                key={i}
-                onClick={() => setCurrentBatchIdx(i)}
-                className={`w-9 h-9 rounded-xl text-xs font-bold shrink-0 transition-all duration-100 ${
-                  i === currentBatchIdx
-                    ? "bg-primary text-primary-foreground shadow-md scale-110"
-                    : filled
-                    ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-                    : "bg-muted text-muted-foreground"
-                }`}
-              >
-                {i + 1}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Batch form */}
-        <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4">
-          <div className="space-y-3">
-            <div>
-              <label className="text-xs font-semibold text-muted-foreground mb-1 block">
-                Question {currentBatchIdx + 1} of 10
-              </label>
-              <textarea
-                placeholder="Enter your question..."
-                value={entry.question}
-                onChange={e => updateBatchEntry(currentBatchIdx, { question: e.target.value })}
-                className="w-full min-h-[80px] rounded-xl border border-input bg-background px-3 py-2.5 text-sm resize-none text-foreground placeholder:text-muted-foreground"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <p className="text-xs font-semibold text-muted-foreground">Options (tap letter to mark correct)</p>
-              {entry.options.map((opt, i) => (
-                <div key={i} className="flex gap-2 items-center">
-                  <button
-                    type="button"
-                    onClick={() => updateBatchEntry(currentBatchIdx, { correctAnswer: i })}
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 transition-colors duration-100 ${
-                      entry.correctAnswer === i
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-secondary text-secondary-foreground"
-                    }`}
-                  >
-                    {entry.correctAnswer === i ? <Check size={14} /> : String.fromCharCode(65 + i)}
-                  </button>
-                  <input
-                    placeholder={`Option ${String.fromCharCode(65 + i)}`}
-                    value={opt}
-                    onChange={e => {
-                      const opts = [...entry.options];
-                      opts[i] = e.target.value;
-                      updateBatchEntry(currentBatchIdx, { options: opts });
-                    }}
-                    className="flex-1 h-10 rounded-xl border border-input bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground"
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Bottom nav */}
-        <div className="shrink-0 px-4 py-3 border-t border-border flex gap-2" style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}>
-          <button
-            onClick={() => setCurrentBatchIdx(Math.max(0, currentBatchIdx - 1))}
-            disabled={currentBatchIdx === 0}
-            className="flex-1 h-11 rounded-xl border border-border text-sm font-semibold text-foreground disabled:opacity-30"
-          >
-            Previous
-          </button>
-          <button
-            onClick={() => setCurrentBatchIdx(Math.min(9, currentBatchIdx + 1))}
-            disabled={currentBatchIdx === 9}
-            className="flex-1 h-11 rounded-xl bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-30"
-          >
-            Next
-          </button>
-        </div>
-      </div>
+      <AdminBatchView
+        batchSubject={batchSubject}
+        batchDifficulty={batchDifficulty}
+        batchEntries={batchEntries}
+        currentBatchIdx={currentBatchIdx}
+        setCurrentBatchIdx={setCurrentBatchIdx}
+        updateBatchEntry={updateBatchEntry}
+        onSave={handleBatchSubmit}
+        onBack={() => setView("subject")}
+      />
     );
   }
 
@@ -869,190 +758,17 @@ const Admin = () => {
 
           {/* Analytics Charts */}
           {history.length > 0 && (
-            <div className="space-y-5">
-              <h2 className="text-base font-bold text-foreground">Analytics</h2>
-
-              {/* Subject Accuracy Bar Chart */}
-              <div className="border border-border rounded-2xl p-4 bg-card">
-                <h3 className="text-sm font-bold text-foreground mb-3">Accuracy by Subject</h3>
-                <div className="h-48">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={subjectAccuracyData} barSize={28}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-                      <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-                      <Tooltip
-                        contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }}
-                        labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 700 }}
-                        formatter={(value: number) => [`${value}%`, "Accuracy"]}
-                      />
-                      <Bar dataKey="accuracy" radius={[6, 6, 0, 0]}>
-                        {subjectAccuracyData.map((_, i) => (
-                          <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-
-              {/* Daily Trend Line Chart */}
-              {dailyTrendData.length > 1 && (
-                <div className="border border-border rounded-2xl p-4 bg-card">
-                  <h3 className="text-sm font-bold text-foreground mb-3">Performance Trend</h3>
-                  <div className="h-48">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={dailyTrendData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                        <XAxis dataKey="date" tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} />
-                        <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-                        <Tooltip
-                          contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }}
-                          labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 700 }}
-                        />
-                        <Line type="monotone" dataKey="avgAccuracy" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 3, fill: "hsl(var(--primary))" }} name="Accuracy %" />
-                        <Line type="monotone" dataKey="attempts" stroke="hsl(var(--muted-foreground))" strokeWidth={1.5} strokeDasharray="4 4" dot={false} name="Attempts" />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              )}
-
-              {/* Difficulty Distribution Pie */}
-              <div className="border border-border rounded-2xl p-4 bg-card">
-                <h3 className="text-sm font-bold text-foreground mb-3">Quiz Difficulty Distribution</h3>
-                <div className="h-48 flex items-center justify-center">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={difficultyDistData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={45}
-                        outerRadius={70}
-                        dataKey="value"
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                        labelLine={false}
-                      >
-                        <Cell fill="hsl(142 76% 36%)" />
-                        <Cell fill="hsl(var(--warning, 45 93% 47%))" />
-                        <Cell fill="hsl(var(--destructive))" />
-                      </Pie>
-                      <Tooltip
-                        contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12 }}
-                        formatter={(value: number) => [value, "Quizzes"]}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            </div>
+            <AdminAnalyticsCharts
+              subjectAccuracyData={subjectAccuracyData}
+              dailyTrendData={dailyTrendData}
+              difficultyDistData={difficultyDistData}
+            />
           )}
 
-          <div className="border border-border rounded-2xl p-4 bg-card">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <KeyRound size={16} className="text-primary" />
-                <h3 className="text-sm font-bold text-foreground">Premium Unlock Code</h3>
-              </div>
-              <button onClick={() => setShowPremiumEdit(!showPremiumEdit)}
-                className="text-xs text-primary font-semibold">{showPremiumEdit ? "Cancel" : "Edit"}</button>
-            </div>
-            {showPremiumEdit ? (
-              <div className="flex gap-2 mt-3">
-                <input value={premiumCode} onChange={e => setPremiumCodeState(e.target.value)}
-                  className="flex-1 h-9 rounded-xl border border-input bg-background px-3 text-sm font-mono uppercase text-foreground" />
-                <button onClick={() => { setPremiumCode(premiumCode); setShowPremiumEdit(false); logActivity("premium_code_update", "Premium unlock code updated"); toast.success("Code updated"); }}
-                  className="h-9 px-4 bg-primary text-primary-foreground rounded-xl text-xs font-bold">Save</button>
-              </div>
-            ) : (
-              <p className="mt-2 text-sm font-mono tracking-wider text-muted-foreground">{premiumCode}</p>
-            )}
-          </div>
+          <AdminPremiumCodePanel />
 
-          {/* Admin Credentials */}
-          <div className="border border-border rounded-2xl p-4 bg-card">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <UserCog size={16} className="text-primary" />
-                <h3 className="text-sm font-bold text-foreground">Admin Credentials</h3>
-              </div>
-              <button onClick={() => { setShowCredChange(!showCredChange); setCredCurrentPass(""); setCredNewUsername(""); setCredNewPassword(""); setCredConfirmPassword(""); }}
-                className="text-xs text-primary font-semibold">{showCredChange ? "Cancel" : "Change"}</button>
-            </div>
-            {showCredChange ? (
-              <div className="mt-3 space-y-3">
-                <div>
-                  <label className="text-[11px] font-semibold text-muted-foreground mb-1 block">Current Password</label>
-                  <div className="relative">
-                    <input
-                      type={credShowPasswords ? "text" : "password"}
-                      value={credCurrentPass}
-                      onChange={e => setCredCurrentPass(e.target.value)}
-                      placeholder="Enter current password"
-                      className="w-full h-9 rounded-xl border border-input bg-background px-3 pr-10 text-sm text-foreground placeholder:text-muted-foreground"
-                    />
-                    <button type="button" onClick={() => setCredShowPasswords(!credShowPasswords)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                      {credShowPasswords ? <EyeOff size={14} /> : <Eye size={14} />}
-                    </button>
-                  </div>
-                </div>
-                <div>
-                  <label className="text-[11px] font-semibold text-muted-foreground mb-1 block">New Username (optional)</label>
-                  <input
-                    type="text"
-                    value={credNewUsername}
-                    onChange={e => setCredNewUsername(e.target.value)}
-                    placeholder="Leave empty to keep current"
-                    className="w-full h-9 rounded-xl border border-input bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground"
-                  />
-                </div>
-                <div>
-                  <label className="text-[11px] font-semibold text-muted-foreground mb-1 block">New Password (optional)</label>
-                  <input
-                    type={credShowPasswords ? "text" : "password"}
-                    value={credNewPassword}
-                    onChange={e => setCredNewPassword(e.target.value)}
-                    placeholder="Leave empty to keep current"
-                    className="w-full h-9 rounded-xl border border-input bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground"
-                  />
-                </div>
-                {credNewPassword && (
-                  <div>
-                    <label className="text-[11px] font-semibold text-muted-foreground mb-1 block">Confirm New Password</label>
-                    <input
-                      type={credShowPasswords ? "text" : "password"}
-                      value={credConfirmPassword}
-                      onChange={e => setCredConfirmPassword(e.target.value)}
-                      placeholder="Re-enter new password"
-                      className="w-full h-9 rounded-xl border border-input bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground"
-                    />
-                  </div>
-                )}
-                <button
-                  onClick={() => {
-                    if (!credCurrentPass) { toast.error("Current password is required"); return; }
-                    if (credNewPassword && credNewPassword !== credConfirmPassword) { toast.error("Passwords do not match"); return; }
-                    if (credNewPassword && credNewPassword.length < 6) { toast.error("Password must be at least 6 characters"); return; }
-                    const success = changeAdminCredentials(credCurrentPass, credNewUsername, credNewPassword);
-                    if (success) {
-                      const parts = [credNewUsername && "username", credNewPassword && "password"].filter(Boolean).join(" & ");
-                      logActivity("admin_credentials_update", `Admin ${parts || "credentials"} updated`);
-                      toast.success("Credentials updated successfully");
-                      setShowCredChange(false);
-                    } else {
-                      toast.error("Current password is incorrect");
-                    }
-                  }}
-                  className="w-full h-10 bg-primary text-primary-foreground rounded-xl text-xs font-bold"
-                >
-                  Update Credentials
-                </button>
-              </div>
-            ) : (
-              <p className="mt-2 text-xs text-muted-foreground">Change your admin username and password</p>
-            )}
-          </div>
+          <AdminCredentialsPanel changeAdminCredentials={changeAdminCredentials} />
+
 
           {recentQuestions.length > 0 && (
             <div>
