@@ -94,7 +94,7 @@ const QuizPlay = () => {
     const key = subjectId || "";
     const seen = seenRef.current;
     questions.forEach(q => seen.add(q.id));
-    saveSeenIds(key, seen, difficulty || undefined);
+    saveSeenIds(key, seen, difficulty as Difficulty);
 
     const result = {
       subject: subject?.name || subjectId,
