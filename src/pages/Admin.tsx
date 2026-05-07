@@ -2,14 +2,17 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Plus, Trash2, Pencil, Search, X, Check, ChevronDown,
-  Database, Download, Upload, KeyRound, BookOpen, BarChart3,
-  Shield, LogOut, ChevronRight, Layers, Clock, TrendingUp, Eye, EyeOff, UserCog, Users, Activity
+  Database, Download, Upload, BookOpen,
+  Shield, LogOut, ChevronRight, Layers, TrendingUp, Users, Activity
 } from "lucide-react";
 import AdminUsers from "@/components/AdminUsers";
 import AdminMonitoring from "@/components/AdminMonitoring";
+import AdminBatchView, { type BatchEntry } from "@/components/admin/AdminBatchView";
+import AdminAnalyticsCharts from "@/components/admin/AdminAnalyticsCharts";
+import AdminPremiumCodePanel from "@/components/admin/AdminPremiumCodePanel";
+import AdminCredentialsPanel from "@/components/admin/AdminCredentialsPanel";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/lib/auth-context";
-import { getPremiumCode, setPremiumCode } from "@/lib/auth-context";
 import { subjects, type Difficulty, sampleQuestions } from "@/lib/quiz-data";
 import {
   getAllQuestions, addQuestion, updateQuestion, deleteQuestion,
@@ -18,8 +21,9 @@ import {
 import { parseQuizJson, buildExportPayload, downloadJson } from "@/lib/quiz-schema";
 import { logActivity } from "@/lib/admin-activity";
 import AdminActivity from "@/components/AdminActivity";
+import { getHistory, safeGet } from "@/lib/safe-storage";
 import { toast } from "sonner";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid, PieChart, Pie, Cell } from "recharts";
+
 
 // ─── Types & Constants ───
 
