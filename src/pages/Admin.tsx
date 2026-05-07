@@ -795,6 +795,16 @@ const Admin = () => {
       <div className="flex-1 overflow-y-auto overscroll-contain">
         <div className="px-5 pt-5 pb-8 space-y-5">
 
+          {/* Local-only data notice */}
+          <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3 flex gap-2">
+            <Activity size={16} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            <div className="text-[11px] leading-relaxed text-amber-900 dark:text-amber-200">
+              <span className="font-bold">Local mode:</span> User accounts, quiz attempts and activity are stored in this browser only.
+              The dashboard shows data from quizzes solved on <span className="font-semibold">this device</span>.
+              To track all users across devices, a backend is required.
+            </div>
+          </div>
+
           {/* Subject Cards */}
           <div>
             <h2 className="text-base font-bold text-foreground mb-3">Subjects</h2>
