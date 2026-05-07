@@ -7,6 +7,7 @@ import { useQuizTimer } from "@/hooks/use-quiz-timer";
 import { useAuth } from "@/lib/auth-context";
 import { saveMockProgress, getMockProgress, deleteMockProgress, type MockProgress } from "@/lib/indexeddb";
 import { toast } from "sonner";
+import { appendHistory } from "@/lib/safe-storage";
 
 const optionLetters = ["A", "B", "C", "D"];
 const MOCK_TOTAL = 50;
@@ -47,7 +48,10 @@ async function buildMockTest(): Promise<Question[]> {
 
 const MockTest = () => {
   const navigate = useNavigate();
-  const { user, unlockPremium } = useAuth();
+  const { user, ready, unlockPremium } = useAuth();
+  useEffect(() => {
+    if (ready && !user) navigate("/login", { replace: true });
+  }, [ready, user, navigate]);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [current, setCurrent] = useState(0);
@@ -141,12 +145,9 @@ const MockTest = () => {
       timed: true,
       isMock: true,
     };
-    const history = JSON.parse(localStorage.getItem("mdcat_history") || "[]");
-    const u = JSON.parse(localStorage.getItem("mdcat_user") || "{}");
-    history.push({ ...result, username: u.username });
-    localStorage.setItem("mdcat_history", JSON.stringify(history));
+    appendHistory({ ...result, username: user?.username });
     await deleteMockProgress(username);
-    navigate("/result", { state: { result, answers: finalAnswers, questions } });
+    navigate("/result", { state: { result, answers: finalAnswers, questions }, replace: true });
   }, [finished, questions, navigate, username]);
 
   const handleTimeUp = useCallback(() => {

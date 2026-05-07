@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, Check, X } from "lucide-react";
 
@@ -8,10 +9,11 @@ const ViewAnswers = () => {
   const navigate = useNavigate();
   const { answers, questions } = location.state || {};
 
-  if (!answers || !questions) {
-    navigate("/home");
-    return null;
-  }
+  useEffect(() => {
+    if (!answers || !questions) navigate("/home", { replace: true });
+  }, [answers, questions, navigate]);
+
+  if (!answers || !questions) return null;
 
   return (
     <div className="h-dvh flex flex-col bg-background">

@@ -1,13 +1,20 @@
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Clock } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { getHistory } from "@/lib/safe-storage";
 import PageShell from "@/components/PageShell";
 
 const History = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const history = JSON.parse(localStorage.getItem("mdcat_history") || "[]")
-    .filter((h: any) => h.username === user?.username)
+  const { user, ready } = useAuth();
+
+  useEffect(() => {
+    if (ready && !user) navigate("/login", { replace: true });
+  }, [ready, user, navigate]);
+
+  const history = getHistory()
+    .filter((h) => h.username === user?.username)
     .reverse();
 
   return (

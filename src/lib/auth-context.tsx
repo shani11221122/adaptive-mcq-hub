@@ -46,7 +46,7 @@ function loadSession(): User | null {
 interface AuthContextType {
   user: User | null;
   ready: boolean;
-  login: (username: string, password: string) => boolean;
+  login: (username: string, password: string) => { ok: boolean; isAdmin: boolean };
   signup: (username: string, email: string, password: string) => boolean;
   logout: () => void;
   unlockPremium: (code: string) => boolean;
@@ -90,23 +90,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setReady(true);
   }, []);
 
-  const login = (username: string, password: string): boolean => {
-    const users = JSON.parse(localStorage.getItem("mdcat_users") || "[]");
+  const login = (username: string, password: string): { ok: boolean; isAdmin: boolean } => {
+    let users: any[] = [];
+    try { users = JSON.parse(localStorage.getItem("mdcat_users") || "[]"); } catch { users = []; }
     const found = users.find((u: any) => u.username === username && u.password === password);
     if (found) {
       const userData: User = { username: found.username, email: found.email, isAdmin: found.isAdmin || false, isPremium: found.isPremium || false };
       setUser(userData);
       persistSession(userData);
-      return true;
+      return { ok: true, isAdmin: userData.isAdmin };
     }
     const adminCreds = getAdminCreds();
     if (username === adminCreds.username && password === adminCreds.password) {
       const userData: User = { username: adminCreds.username, email: "admin@mdcat.com", isAdmin: true, isPremium: true };
       setUser(userData);
       persistSession(userData);
-      return true;
+      return { ok: true, isAdmin: true };
     }
-    return false;
+    return { ok: false, isAdmin: false };
   };
 
   const signup = (username: string, email: string, password: string): boolean => {

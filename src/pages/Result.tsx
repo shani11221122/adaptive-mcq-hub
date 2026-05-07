@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, RotateCcw, Eye } from "lucide-react";
 import { motion } from "framer-motion";
@@ -17,10 +18,11 @@ const Result = () => {
   const { user } = useAuth();
   const { result, answers, questions } = location.state || {};
 
-  if (!result) {
-    navigate("/home");
-    return null;
-  }
+  useEffect(() => {
+    if (!result) navigate("/home", { replace: true });
+  }, [result, navigate]);
+
+  if (!result) return null;
 
   const percentage = Math.round((result.correct / result.total) * 100);
   const message = motivationalMessages.find((m) => percentage >= m.min)!;
@@ -69,7 +71,7 @@ const Result = () => {
             <p className="text-xs text-muted-foreground font-medium mt-0.5">Incorrect</p>
           </div>
           <div className="glass-card p-4 text-center">
-            <p className="text-2xl font-bold font-display text-foreground">10</p>
+            <p className="text-2xl font-bold font-display text-foreground">{result.total}</p>
             <p className="text-xs text-muted-foreground font-medium mt-0.5">Total</p>
           </div>
           <div className="glass-card p-4 text-center">
@@ -86,11 +88,15 @@ const Result = () => {
         <button
           className="w-full h-12 rounded-xl border-2 border-border text-foreground text-sm font-semibold flex items-center justify-center gap-2 hover:border-primary/30 transition-colors duration-100 active:scale-[0.98]"
           onClick={() => {
+            if (result?.isMock) {
+              navigate("/mock-test", { replace: true });
+              return;
+            }
             const subj = questions?.[0]?.subject || "";
             const diff = result?.difficulty && result.difficulty !== "all" ? result.difficulty : "easy";
             const params = new URLSearchParams({ difficulty: diff });
             if (result?.timed) params.set("timed", "true");
-            navigate(`/quiz/${subj}?${params.toString()}`);
+            navigate(`/quiz/${subj}?${params.toString()}`, { replace: true });
           }}
         >
           <RotateCcw size={18} /> Try Again

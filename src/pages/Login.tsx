@@ -19,9 +19,10 @@ const Login = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (login(username, password)) {
+    const res = login(username, password);
+    if (res.ok) {
       toast.success("Welcome back!");
-      navigate("/home");
+      navigate(res.isAdmin ? "/admin" : "/home", { replace: true });
     } else {
       toast.error("Invalid credentials");
     }
