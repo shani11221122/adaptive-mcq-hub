@@ -16,17 +16,17 @@ import Home from "./pages/Home";
 import QuizSelect from "./pages/QuizSelect";
 import QuizPlay from "./pages/QuizPlay";
 import Result from "./pages/Result";
-import ViewAnswers from "./pages/ViewAnswers";
-import History from "./pages/History";
-import Dashboard from "./pages/Dashboard";
-import Settings from "./pages/Settings";
-import Rules from "./pages/Rules";
-import MockTest from "./pages/MockTest";
 import AdminLogin from "./pages/AdminLogin";
 import NotFound from "./pages/NotFound";
 
 // Lazy-load admin (Recharts + heavy panel) so user bundle stays small.
 const Admin = lazy(() => import("./pages/Admin"));
+const MockTest = lazy(() => import("./pages/MockTest"));
+const ViewAnswers = lazy(() => import("./pages/ViewAnswers"));
+const History = lazy(() => import("./pages/History"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Settings = lazy(() => import("./pages/Settings"));
+const Rules = lazy(() => import("./pages/Rules"));
 
 const queryClient = new QueryClient();
 
@@ -34,6 +34,10 @@ const RouteFallback = () => (
   <div className="h-dvh bg-background flex items-center justify-center">
     <p className="text-sm text-muted-foreground">Loading…</p>
   </div>
+);
+
+const Lazy = ({ children }: { children: React.ReactNode }) => (
+  <Suspense fallback={<RouteFallback />}>{children}</Suspense>
 );
 
 const AppRoutes = () => {
@@ -47,20 +51,18 @@ const AppRoutes = () => {
       <Route path="/quiz" element={<QuizSelect />} />
       <Route path="/quiz/:subjectId" element={<QuizPlay />} />
       <Route path="/result" element={<Result />} />
-      <Route path="/result/answers" element={<ViewAnswers />} />
-      <Route path="/history" element={<History />} />
-      <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="/settings" element={<Settings />} />
-      <Route path="/rules" element={<Rules />} />
-      <Route path="/mock-test" element={<MockTest />} />
+      <Route path="/result/answers" element={<Lazy><ViewAnswers /></Lazy>} />
+      <Route path="/history" element={<Lazy><History /></Lazy>} />
+      <Route path="/dashboard" element={<Lazy><Dashboard /></Lazy>} />
+      <Route path="/settings" element={<Lazy><Settings /></Lazy>} />
+      <Route path="/rules" element={<Lazy><Rules /></Lazy>} />
+      <Route path="/mock-test" element={<Lazy><MockTest /></Lazy>} />
       <Route path="/admin/login" element={<AdminLogin />} />
       <Route
         path="/admin"
         element={
           <AdminRoute>
-            <Suspense fallback={<RouteFallback />}>
-              <Admin />
-            </Suspense>
+            <Lazy><Admin /></Lazy>
           </AdminRoute>
         }
       />
