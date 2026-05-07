@@ -104,9 +104,7 @@ const Admin = () => {
 
   // ─── Dashboard Stats ───
 
-  const history = useMemo(() => {
-    try { return JSON.parse(localStorage.getItem("mdcat_history") || "[]"); } catch { return []; }
-  }, []);
+  const history = useMemo(() => getHistory(), []);
   const recentQuestions = [...questions].sort((a, b) => b.createdAt - a.createdAt).slice(0, 5);
 
   const getSubjectStats = (subjectId: string) => {
@@ -119,9 +117,8 @@ const Admin = () => {
     };
   };
 
-  const totalUsers = (() => {
-    try { return JSON.parse(localStorage.getItem("mdcat_users") || "[]").length; } catch { return 0; }
-  })();
+  const totalUsers = safeGet<unknown[]>("mdcat_users", []).length;
+
 
   const totalStats = {
     total: questions.length,
@@ -133,7 +130,7 @@ const Admin = () => {
 
   // ─── Analytics Data ───
 
-  const CHART_COLORS = ["hsl(var(--primary))", "hsl(var(--destructive))", "hsl(var(--warning, 45 93% 47%))", "hsl(142 76% 36%)", "hsl(262 83% 58%)"];
+  // ─── Analytics Data ───
 
   const subjectAccuracyData = useMemo(() =>
     subjects.map(s => {
