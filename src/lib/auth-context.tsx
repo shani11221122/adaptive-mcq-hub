@@ -50,6 +50,7 @@ interface AuthContextType {
   signup: (username: string, email: string, password: string) => boolean;
   logout: () => void;
   unlockPremium: (code: string) => boolean;
+  activatePremium: (plan?: string) => void;
   changeAdminCredentials: (currentPassword: string, newUsername: string, newPassword: string) => boolean;
   changePassword: (currentPassword: string, newPassword: string) => { ok: boolean; error?: string };
 }
