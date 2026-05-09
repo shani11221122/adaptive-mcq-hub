@@ -235,10 +235,16 @@ const MockTest = () => {
                 <button onClick={() => setShowUnlock(false)} className="text-xs text-muted-foreground font-medium">Cancel</button>
               </div>
             ) : (
-              <button onClick={() => setShowUnlock(true)}
-                className="w-full h-12 bg-primary text-primary-foreground rounded-xl font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.97] transition-transform duration-100">
-                <Lock size={16} /> Enter Unlock Code
-              </button>
+              <div className="space-y-3">
+                <button onClick={() => navigate("/subscribe")}
+                  className="w-full h-12 bg-primary text-primary-foreground rounded-xl font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.97] transition-transform duration-100">
+                  <Crown size={16} /> Subscribe Now
+                </button>
+                <button onClick={() => setShowUnlock(true)}
+                  className="w-full h-11 bg-muted text-foreground rounded-xl font-semibold text-xs flex items-center justify-center gap-2 active:scale-[0.97] transition-transform duration-100">
+                  <Lock size={14} /> I have an unlock code
+                </button>
+              </div>
             )}
           </div>
         </div>
