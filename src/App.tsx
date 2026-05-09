@@ -27,6 +27,7 @@ const History = lazy(() => import("./pages/History"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Rules = lazy(() => import("./pages/Rules"));
+const Subscribe = lazy(() => import("./pages/Subscribe"));
 
 const queryClient = new QueryClient();
 
