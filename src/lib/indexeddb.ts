@@ -1,12 +1,13 @@
 const DB_NAME = "mdcat_quiz_db";
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const QUESTIONS_STORE = "questions";
 const PROGRESS_STORE = "mock_progress";
+const SUBSCRIPTION_STORE = "subscriptions";
 
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
-    request.onupgradeneeded = (event) => {
+    request.onupgradeneeded = () => {
       const db = request.result;
       if (!db.objectStoreNames.contains(QUESTIONS_STORE)) {
         const store = db.createObjectStore(QUESTIONS_STORE, { keyPath: "id" });
@@ -17,10 +18,52 @@ function openDB(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains(PROGRESS_STORE)) {
         db.createObjectStore(PROGRESS_STORE, { keyPath: "username" });
       }
+      if (!db.objectStoreNames.contains(SUBSCRIPTION_STORE)) {
+        db.createObjectStore(SUBSCRIPTION_STORE, { keyPath: "username" });
+      }
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
   });
+}
+
+// ─── Subscription store ───
+export interface SubscriptionRecord {
+  username: string;
+  isPremium: boolean;
+  plan: string;
+  method: string;
+  reference: string;
+  amount: number;
+  startDate: number;
+  expiryDate: number;
+  updatedAt: number;
+}
+
+export async function saveSubscription(rec: SubscriptionRecord): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(SUBSCRIPTION_STORE, "readwrite");
+    tx.objectStore(SUBSCRIPTION_STORE).put(rec);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+export async function getSubscription(username: string): Promise<SubscriptionRecord | null> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(SUBSCRIPTION_STORE, "readonly");
+    const req = tx.objectStore(SUBSCRIPTION_STORE).get(username);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+export async function isSubscriptionActive(username: string): Promise<boolean> {
+  const sub = await getSubscription(username);
+  if (!sub) return false;
+  return sub.isPremium && sub.expiryDate > Date.now();
 }
 
 // ─── Question types & CRUD ───
