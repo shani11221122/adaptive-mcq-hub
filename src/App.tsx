@@ -58,6 +58,7 @@ const AppRoutes = () => {
       <Route path="/settings" element={<Lazy><Settings /></Lazy>} />
       <Route path="/rules" element={<Lazy><Rules /></Lazy>} />
       <Route path="/mock-test" element={<Lazy><MockTest /></Lazy>} />
+      <Route path="/subscribe" element={<Lazy><Subscribe /></Lazy>} />
       <Route path="/admin/login" element={<AdminLogin />} />
       <Route
         path="/admin"
