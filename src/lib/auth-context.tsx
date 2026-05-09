@@ -144,6 +144,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return false;
   };
 
+  const activatePremium = (_plan: string = "Premium Monthly") => {
+    if (!user) return;
+    const updated = { ...user, isPremium: true };
+    setUser(updated);
+    persistSession(updated);
+    try {
+      const users = JSON.parse(localStorage.getItem("mdcat_users") || "[]");
+      const idx = users.findIndex((u: any) => u.username === user.username);
+      if (idx >= 0) {
+        users[idx].isPremium = true;
+        localStorage.setItem("mdcat_users", JSON.stringify(users));
+      }
+    } catch {}
+  };
+
   const changeAdminCredentials = (currentPassword: string, newUsername: string, newPassword: string): boolean => {
     const creds = getAdminCreds();
     if (currentPassword !== creds.password) return false;
