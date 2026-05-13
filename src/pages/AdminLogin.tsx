@@ -40,7 +40,7 @@ const AdminLogin = () => {
     return () => clearTimeout(t);
   }, [locked, remainingMs]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (locked) {
       toast.error(`Too many attempts. Try again in ${Math.ceil(remainingMs / 1000)}s.`);
@@ -51,7 +51,7 @@ const AdminLogin = () => {
       return;
     }
 
-    const res = login(username, password);
+    const res = await login(username, password);
     if (res.ok && res.isAdmin) {
       const cleared = { attempts: 0, lockedUntil: 0 };
       setLockState(cleared);

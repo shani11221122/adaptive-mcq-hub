@@ -59,7 +59,7 @@ const Settings = () => {
     setSubmitting(true);
     // simulate API latency for UX
     await new Promise((r) => setTimeout(r, 400));
-    const res = changePassword(current, next);
+    const res = await changePassword(current, next);
     setSubmitting(false);
     if (!res.ok) {
       toast.error(res.error || "Failed to change password");
