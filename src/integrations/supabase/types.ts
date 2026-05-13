@@ -14,7 +14,219 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      admin_settings: {
+        Row: {
+          created_at: string
+          id: string
+          key: string
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          key: string
+          updated_at?: string
+          value?: Json
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          key?: string
+          updated_at?: string
+          value?: Json
+        }
+        Relationships: []
+      }
+      mock_progress: {
+        Row: {
+          answers: number[] | null
+          current_index: number
+          id: string
+          questions: Json
+          saved_at: string
+          seconds_left: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          answers?: number[] | null
+          current_index?: number
+          id?: string
+          questions?: Json
+          saved_at?: string
+          seconds_left?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          answers?: number[] | null
+          current_index?: number
+          id?: string
+          questions?: Json
+          saved_at?: string
+          seconds_left?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          email: string | null
+          id: string
+          is_admin: boolean
+          is_premium: boolean
+          updated_at: string
+          user_id: string
+          username: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_admin?: boolean
+          is_premium?: boolean
+          updated_at?: string
+          user_id: string
+          username: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_admin?: boolean
+          is_premium?: boolean
+          updated_at?: string
+          user_id?: string
+          username?: string
+        }
+        Relationships: []
+      }
+      questions: {
+        Row: {
+          correct_answer: number
+          created_at: string
+          difficulty: Database["public"]["Enums"]["difficulty_enum"]
+          id: string
+          options: string[]
+          question: string
+          subject: Database["public"]["Enums"]["subject_enum"]
+          updated_at: string
+        }
+        Insert: {
+          correct_answer: number
+          created_at?: string
+          difficulty: Database["public"]["Enums"]["difficulty_enum"]
+          id: string
+          options: string[]
+          question: string
+          subject: Database["public"]["Enums"]["subject_enum"]
+          updated_at?: string
+        }
+        Update: {
+          correct_answer?: number
+          created_at?: string
+          difficulty?: Database["public"]["Enums"]["difficulty_enum"]
+          id?: string
+          options?: string[]
+          question?: string
+          subject?: Database["public"]["Enums"]["subject_enum"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      quiz_results: {
+        Row: {
+          answers: Json | null
+          correct_count: number
+          created_at: string
+          difficulty: Database["public"]["Enums"]["difficulty_enum"]
+          id: string
+          incorrect_count: number
+          question_ids: string[] | null
+          score_percent: number | null
+          subject: Database["public"]["Enums"]["subject_enum"]
+          time_taken_seconds: number | null
+          total_questions: number
+          user_id: string
+        }
+        Insert: {
+          answers?: Json | null
+          correct_count?: number
+          created_at?: string
+          difficulty: Database["public"]["Enums"]["difficulty_enum"]
+          id?: string
+          incorrect_count?: number
+          question_ids?: string[] | null
+          score_percent?: number | null
+          subject: Database["public"]["Enums"]["subject_enum"]
+          time_taken_seconds?: number | null
+          total_questions?: number
+          user_id: string
+        }
+        Update: {
+          answers?: Json | null
+          correct_count?: number
+          created_at?: string
+          difficulty?: Database["public"]["Enums"]["difficulty_enum"]
+          id?: string
+          incorrect_count?: number
+          question_ids?: string[] | null
+          score_percent?: number | null
+          subject?: Database["public"]["Enums"]["subject_enum"]
+          time_taken_seconds?: number | null
+          total_questions?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      subscriptions: {
+        Row: {
+          amount: number | null
+          created_at: string
+          expiry_date: string | null
+          id: string
+          is_active: boolean
+          method: string | null
+          plan: string
+          reference: string | null
+          start_date: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string
+          expiry_date?: string | null
+          id?: string
+          is_active?: boolean
+          method?: string | null
+          plan?: string
+          reference?: string | null
+          start_date?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string
+          expiry_date?: string | null
+          id?: string
+          is_active?: boolean
+          method?: string | null
+          plan?: string
+          reference?: string | null
+          start_date?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +235,13 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      difficulty_enum: "easy" | "intermediate" | "hard"
+      subject_enum:
+        | "biology"
+        | "chemistry"
+        | "physics"
+        | "english"
+        | "reasoning"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +368,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      difficulty_enum: ["easy", "intermediate", "hard"],
+      subject_enum: ["biology", "chemistry", "physics", "english", "reasoning"],
+    },
   },
 } as const
