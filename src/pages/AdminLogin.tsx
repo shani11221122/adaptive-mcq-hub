@@ -122,16 +122,16 @@ const AdminLogin = () => {
         <form onSubmit={handleSubmit} className="space-y-4 max-w-sm mx-auto">
           <div>
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 block">
-              Admin Username
+              Admin Email
             </label>
             <input
-              type="text"
-              placeholder="Enter admin username"
+              type="email"
+              placeholder="admin@example.com"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               className="input-field w-full"
               disabled={locked}
-              autoComplete="off"
+              autoComplete="email"
               required
             />
           </div>
