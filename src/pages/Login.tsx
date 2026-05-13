@@ -7,8 +7,9 @@ import { toast } from "sonner";
 import puzzleLogo from "@/assets/logo.jpeg";
 
 const Login = () => {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const { login, user, ready } = useAuth();
   const navigate = useNavigate();
 
@@ -16,15 +17,22 @@ const Login = () => {
     if (ready && user) navigate(user.isAdmin ? "/admin" : "/home", { replace: true });
   }, [ready, user, navigate]);
 
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = login(username, password);
+    if (submitting) return;
+    setSubmitting(true);
+    const res = await login(email, password);
+    setSubmitting(false);
     if (res.ok) {
       toast.success("Welcome back!");
       navigate(res.isAdmin ? "/admin" : "/home", { replace: true });
     } else {
-      toast.error("Invalid credentials");
+      const msg = res.error || "Invalid credentials";
+      if (/confirm/i.test(msg)) {
+        toast.error("Please confirm your email first. Check your inbox.");
+      } else {
+        toast.error(msg);
+      }
     }
   };
 
@@ -54,9 +62,11 @@ const Login = () => {
         <p className="text-muted-foreground text-center mb-8">Log in to continue</p>
 
         <form onSubmit={handleSubmit} className="space-y-4 flex-1 flex flex-col">
-          <input type="text" placeholder="Enter Username" value={username} onChange={e => setUsername(e.target.value)} className="input-field w-full" required />
+          <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} className="input-field w-full" required />
           <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} className="input-field w-full" required />
-          <button type="submit" className="btn-primary w-full mt-4">Log in</button>
+          <button type="submit" disabled={submitting} className="btn-primary w-full mt-4 disabled:opacity-60">
+            {submitting ? "Signing in…" : "Log in"}
+          </button>
           <div className="flex-1" />
           <p className="text-center text-muted-foreground">
             Don't have an account?{" "}

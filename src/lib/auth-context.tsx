@@ -1,84 +1,65 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import type { Session } from "@supabase/supabase-js";
 
 interface User {
+  id: string;
   username: string;
   email: string;
   isAdmin: boolean;
   isPremium: boolean;
 }
 
-const SESSION_KEY = "mdcat_session";
-const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
-
-interface StoredSession { user: User; expiresAt: number; }
-
-function persistSession(user: User) {
-  const session: StoredSession = { user, expiresAt: Date.now() + SESSION_DURATION_MS };
-  localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-  localStorage.setItem("mdcat_user", JSON.stringify(user)); // backward compat
-}
-
-function loadSession(): User | null {
-  try {
-    const raw = localStorage.getItem(SESSION_KEY);
-    if (raw) {
-      const s: StoredSession = JSON.parse(raw);
-      if (s.expiresAt && s.expiresAt > Date.now()) {
-        // sliding renewal: extend on each load
-        persistSession(s.user);
-        return s.user;
-      }
-      localStorage.removeItem(SESSION_KEY);
-      localStorage.removeItem("mdcat_user");
-      return null;
-    }
-    // legacy fallback
-    const legacy = localStorage.getItem("mdcat_user");
-    if (legacy) {
-      const u = JSON.parse(legacy);
-      persistSession(u);
-      return u;
-    }
-  } catch {}
-  return null;
-}
-
 interface AuthContextType {
   user: User | null;
   ready: boolean;
-  login: (username: string, password: string) => { ok: boolean; isAdmin: boolean };
-  signup: (username: string, email: string, password: string) => boolean;
-  logout: () => void;
-  unlockPremium: (code: string) => boolean;
-  activatePremium: (plan?: string) => void;
+  login: (email: string, password: string) => Promise<{ ok: boolean; isAdmin: boolean; error?: string }>;
+  signup: (username: string, email: string, password: string) => Promise<{ ok: boolean; needsConfirmation: boolean; error?: string }>;
+  logout: () => Promise<void>;
+  unlockPremium: (code: string) => Promise<boolean>;
+  activatePremium: (plan?: string) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<{ ok: boolean; error?: string }>;
+  // legacy no-op kept so existing admin UI compiles
   changeAdminCredentials: (currentPassword: string, newUsername: string, newPassword: string) => boolean;
-  changePassword: (currentPassword: string, newPassword: string) => { ok: boolean; error?: string };
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 const PREMIUM_CODE_KEY = "mdcat_premium_code";
 const DEFAULT_PREMIUM_CODE = "MDCAT2024";
-const ADMIN_CREDS_KEY = "mdcat_admin_creds";
-
-interface AdminCreds { username: string; password: string; }
-
-function getAdminCreds(): AdminCreds {
-  const saved = localStorage.getItem(ADMIN_CREDS_KEY);
-  if (saved) return JSON.parse(saved);
-  return { username: "admin", password: "admin123" };
-}
-
-function getValidCode(): string {
-  return localStorage.getItem(PREMIUM_CODE_KEY) || DEFAULT_PREMIUM_CODE;
-}
 
 export function setPremiumCode(code: string) {
   localStorage.setItem(PREMIUM_CODE_KEY, code);
 }
-
 export function getPremiumCode(): string {
-  return getValidCode();
+  return localStorage.getItem(PREMIUM_CODE_KEY) || DEFAULT_PREMIUM_CODE;
+}
+
+async function loadProfile(userId: string, fallbackEmail: string): Promise<User | null> {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("user_id, username, email, is_admin, is_premium")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) {
+    console.error("loadProfile error", error);
+  }
+  if (!data) {
+    return {
+      id: userId,
+      username: fallbackEmail.split("@")[0],
+      email: fallbackEmail,
+      isAdmin: false,
+      isPremium: false,
+    };
+  }
+  return {
+    id: userId,
+    username: data.username || fallbackEmail.split("@")[0],
+    email: data.email || fallbackEmail,
+    isAdmin: !!data.is_admin,
+    isPremium: !!data.is_premium,
+  };
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -86,120 +67,112 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const restored = loadSession();
-    if (restored) setUser(restored);
-    setReady(true);
+    // Set up listener FIRST
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      const s = session as Session | null;
+      if (!s?.user) {
+        setUser(null);
+        return;
+      }
+      // defer DB call to avoid deadlock
+      setTimeout(() => {
+        loadProfile(s.user.id, s.user.email || "").then((u) => setUser(u));
+      }, 0);
+    });
+
+    // Then check existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        loadProfile(session.user.id, session.user.email || "").then((u) => {
+          setUser(u);
+          setReady(true);
+        });
+      } else {
+        setReady(true);
+      }
+    });
+
+    return () => sub.subscription.unsubscribe();
   }, []);
 
-  const login = (username: string, password: string): { ok: boolean; isAdmin: boolean } => {
-    let users: any[] = [];
-    try { users = JSON.parse(localStorage.getItem("mdcat_users") || "[]"); } catch { users = []; }
-    const found = users.find((u: any) => u.username === username && u.password === password);
-    if (found) {
-      const userData: User = { username: found.username, email: found.email, isAdmin: found.isAdmin || false, isPremium: found.isPremium || false };
-      setUser(userData);
-      persistSession(userData);
-      return { ok: true, isAdmin: userData.isAdmin };
+  const login: AuthContextType["login"] = async (email, password) => {
+    const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    if (error || !data.user) {
+      return { ok: false, isAdmin: false, error: error?.message || "Invalid credentials" };
     }
-    const adminCreds = getAdminCreds();
-    if (username === adminCreds.username && password === adminCreds.password) {
-      const userData: User = { username: adminCreds.username, email: "admin@mdcat.com", isAdmin: true, isPremium: true };
-      setUser(userData);
-      persistSession(userData);
-      return { ok: true, isAdmin: true };
-    }
-    return { ok: false, isAdmin: false };
+    const profile = await loadProfile(data.user.id, data.user.email || email);
+    setUser(profile);
+    return { ok: true, isAdmin: !!profile?.isAdmin };
   };
 
-  const signup = (username: string, email: string, password: string): boolean => {
-    const users = JSON.parse(localStorage.getItem("mdcat_users") || "[]");
-    if (users.find((u: any) => u.username === username)) return false;
-    users.push({ username, email, password, isAdmin: false, isPremium: false });
-    localStorage.setItem("mdcat_users", JSON.stringify(users));
-    const userData: User = { username, email, isAdmin: false, isPremium: false };
-    setUser(userData);
-    persistSession(userData);
-    return true;
+  const signup: AuthContextType["signup"] = async (username, email, password) => {
+    const redirectUrl = `${window.location.origin}/login`;
+    const { data, error } = await supabase.auth.signUp({
+      email: email.trim(),
+      password,
+      options: {
+        emailRedirectTo: redirectUrl,
+        data: { username: username.trim() },
+      },
+    });
+    if (error) {
+      return { ok: false, needsConfirmation: false, error: error.message };
+    }
+    // If session is null, email confirmation is required
+    const needsConfirmation = !data.session;
+    return { ok: true, needsConfirmation };
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
-    localStorage.removeItem(SESSION_KEY);
-    localStorage.removeItem("mdcat_user");
   };
 
-  const unlockPremium = (code: string): boolean => {
-    if (code.trim().toUpperCase() === getValidCode().toUpperCase()) {
-      if (user) {
-        const updated = { ...user, isPremium: true };
-        setUser(updated);
-        persistSession(updated);
-        // Also update in users list
-        const users = JSON.parse(localStorage.getItem("mdcat_users") || "[]");
-        const idx = users.findIndex((u: any) => u.username === user.username);
-        if (idx >= 0) { users[idx].isPremium = true; localStorage.setItem("mdcat_users", JSON.stringify(users)); }
-      }
-      return true;
+  const unlockPremium = async (code: string): Promise<boolean> => {
+    const valid = (localStorage.getItem(PREMIUM_CODE_KEY) || DEFAULT_PREMIUM_CODE).toUpperCase();
+    if (code.trim().toUpperCase() !== valid) return false;
+    if (!user) return false;
+    const { error } = await supabase
+      .from("profiles")
+      .update({ is_premium: true })
+      .eq("user_id", user.id);
+    if (error) {
+      console.error("unlockPremium update failed", error);
+      return false;
     }
-    return false;
-  };
-
-  const activatePremium = (_plan: string = "Premium Monthly") => {
-    if (!user) return;
-    const updated = { ...user, isPremium: true };
-    setUser(updated);
-    persistSession(updated);
-    try {
-      const users = JSON.parse(localStorage.getItem("mdcat_users") || "[]");
-      const idx = users.findIndex((u: any) => u.username === user.username);
-      if (idx >= 0) {
-        users[idx].isPremium = true;
-        localStorage.setItem("mdcat_users", JSON.stringify(users));
-      }
-    } catch {}
-  };
-
-  const changeAdminCredentials = (currentPassword: string, newUsername: string, newPassword: string): boolean => {
-    const creds = getAdminCreds();
-    if (currentPassword !== creds.password) return false;
-    const updated: AdminCreds = {
-      username: newUsername.trim() || creds.username,
-      password: newPassword.trim() || creds.password,
-    };
-    localStorage.setItem(ADMIN_CREDS_KEY, JSON.stringify(updated));
-    // Update current session
-    if (user?.isAdmin) {
-      const updatedUser = { ...user, username: updated.username };
-      setUser(updatedUser);
-      persistSession(updatedUser);
-    }
+    setUser({ ...user, isPremium: true });
     return true;
   };
 
-  const changePassword = (currentPassword: string, newPassword: string): { ok: boolean; error?: string } => {
+  const activatePremium = async (_plan: string = "Premium Monthly") => {
+    if (!user) return;
+    const { error } = await supabase
+      .from("profiles")
+      .update({ is_premium: true })
+      .eq("user_id", user.id);
+    if (error) {
+      console.error("activatePremium failed", error);
+      return;
+    }
+    setUser({ ...user, isPremium: true });
+  };
+
+  const changePassword: AuthContextType["changePassword"] = async (_currentPassword, newPassword) => {
     if (!user) return { ok: false, error: "Not signed in" };
     if (!newPassword || newPassword.length < 8) return { ok: false, error: "New password must be at least 8 characters" };
     if (!/[A-Za-z]/.test(newPassword) || !/[0-9]/.test(newPassword)) return { ok: false, error: "Use letters and numbers" };
-    if (newPassword === currentPassword) return { ok: false, error: "New password must differ from current" };
-
-    if (user.isAdmin) {
-      const creds = getAdminCreds();
-      if (currentPassword !== creds.password) return { ok: false, error: "Current password is incorrect" };
-      localStorage.setItem(ADMIN_CREDS_KEY, JSON.stringify({ ...creds, password: newPassword }));
-      return { ok: true };
-    }
-
-    const users = JSON.parse(localStorage.getItem("mdcat_users") || "[]");
-    const idx = users.findIndex((u: any) => u.username === user.username);
-    if (idx < 0) return { ok: false, error: "User not found" };
-    if (users[idx].password !== currentPassword) return { ok: false, error: "Current password is incorrect" };
-    users[idx].password = newPassword;
-    localStorage.setItem("mdcat_users", JSON.stringify(users));
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) return { ok: false, error: error.message };
     return { ok: true };
   };
 
+  const changeAdminCredentials = (_c: string, _u: string, _p: string) => {
+    // Legacy stub — admin role is now controlled via profiles.is_admin in DB.
+    return false;
+  };
+
   return (
-    <AuthContext.Provider value={{ user, ready, login, signup, logout, unlockPremium, activatePremium, changeAdminCredentials, changePassword }}>
+    <AuthContext.Provider value={{ user, ready, login, signup, logout, unlockPremium, activatePremium, changePassword, changeAdminCredentials }}>
       {children}
     </AuthContext.Provider>
   );
